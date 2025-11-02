@@ -231,6 +231,3 @@ Please open a pull request or issue for discussions.
 This project is licensed under the **MIT License** — see the LICENSE file for details.
 
 ---
-
-Would you like me to include your **folder structure (actual)** from your current project (so I can make the README perfectly match your codebase)?
-If you paste your `/src` folder tree (from `tree /F` or `ls -R src`), I can refine the README for **exact structure and description of each module**.
