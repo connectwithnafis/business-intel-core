@@ -6,7 +6,6 @@ import { InjectRepository } from '@nestjs/typeorm';
 
 export class UserRepository implements IUserRepository {
   constructor(
-    @InjectRepository(UserEntity)
     private readonly repo: Repository<UserEntity>
   ) {}
 
@@ -16,6 +15,7 @@ export class UserRepository implements IUserRepository {
       entity.email,
       entity.passwordHash,
       entity.role,
+      entity.refreshTokenHash ?? null,
       entity.createdAt,
       entity.updatedAt
     );
@@ -26,6 +26,7 @@ export class UserRepository implements IUserRepository {
     entity.email = user.email;
     entity.passwordHash = user.passwordHash;
     entity.role = user.role;
+    entity.refreshTokenHash = user.refreshTokenHash;
     return entity;
   }
 
@@ -44,5 +45,8 @@ export class UserRepository implements IUserRepository {
     const saved = await this.repo.save(entity);
     return this.toDomain(saved);
   }
-}
 
+  async updateRefreshToken(userId: string, refreshTokenHash: string | null): Promise<void> {
+    await this.repo.update(userId, { refreshTokenHash });
+  }
+}
