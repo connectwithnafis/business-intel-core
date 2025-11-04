@@ -153,14 +153,12 @@ npm install
 Create a `.env` file in the project root:
 
 ```env
-DB_HOST=localhost
-DB_PORT=db_port
-DB_USER=db_user
-DB_PASS=db_password
-DB_NAME=database_name
-
-JWT_SECRET=your_jwt_secret_here_change_me
-JWT_EXPIRES_IN=3600s
+DATABASE_URL=postgresql://username:password@localhost:port/database_name
+JWT_SECRET=your_secret_change_me
+JWT_REFRESH_SECRET=your_refresh_secret_change_me
+JWT_ACCESS_EXPIRES=900                          
+JWT_REFRESH_EXPIRES=604800                      
+#JWT_REFRESH_ROTATION=true
 
 NODE_ENV=development
 PORT=3000

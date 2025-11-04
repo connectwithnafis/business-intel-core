@@ -4,7 +4,7 @@ export class User {
     public email: string,
     public passwordHash: string,
     public role: string,
-    public refreshTokenHash: string | null = null,
+    public fullName: string | null = null,
     public createdAt?: Date,
     public updatedAt?: Date
   ) {}

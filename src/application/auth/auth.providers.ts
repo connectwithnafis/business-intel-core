@@ -1,9 +1,9 @@
 import { Provider } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { UserRepository } from '../../infrastructure/repository/user.repository';
-import { RefreshTokenRepository } from '../../infrastructure/repository/refresh-token.repository';
+import { SessionRepository } from '../../infrastructure/repository/session.repository';
 import { UserEntity } from '../../infrastructure/entities/user.entity';
-import { RefreshTokenEntity } from '../../infrastructure/entities/refresh-token.entity';
+import { SessionEntity } from '../../infrastructure/entities/session.entity';
 
 export const AuthProviders: Provider[] = [
   {
@@ -15,10 +15,10 @@ export const AuthProviders: Provider[] = [
     inject: ['DATA_SOURCE'],
   },
   {
-    provide: RefreshTokenRepository,
+    provide: SessionRepository,
     useFactory: (dataSource: DataSource) => {
-      const repo = dataSource.getRepository(RefreshTokenEntity);
-      return new RefreshTokenRepository(repo);
+      const repo = dataSource.getRepository(SessionEntity);
+      return new SessionRepository(repo);
     },
     inject: ['DATA_SOURCE'],
   },

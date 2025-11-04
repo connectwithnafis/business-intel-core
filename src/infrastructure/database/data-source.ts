@@ -2,10 +2,9 @@ import 'dotenv/config';
 import { DataSource } from 'typeorm';
 import path from 'path';
 import { UserEntity } from '../entities/user.entity';
+import { SessionEntity } from '../entities/session.entity';
 import { parse } from 'pg-connection-string';
-import { RefreshTokenEntity } from '../entities/refresh-token.entity';
 
-// Parse DATABASE_URL if provided, otherwise use individual env vars
 function getDatabaseConfig() {
   const databaseUrl = process.env.DATABASE_URL;
   
@@ -20,7 +19,6 @@ function getDatabaseConfig() {
     };
   }
 
-  // Fallback to individual environment variables
   return {
     host: process.env.DB_HOST || 'localhost',
     port: Number(process.env.DB_PORT) || 5432,
@@ -39,8 +37,8 @@ export const AppDataSource = new DataSource({
   username: dbConfig.username,
   password: dbConfig.password,
   database: dbConfig.database,
-  synchronize: true, // false for production; use migrations
+  synchronize: false, // false for production; use migrations
   logging: false,
-  entities: [UserEntity,RefreshTokenEntity],
+  entities: [UserEntity, SessionEntity],
   migrations: [path.join(__dirname, '../../migrations/*{.ts,.js}')],
 });

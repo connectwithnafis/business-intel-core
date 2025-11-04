@@ -8,7 +8,6 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(private configService: ConfigService) {
     const secret = configService.get<string>('JWT_SECRET');
     
-    // Debug logging
     console.log('JwtStrategy Configuration:', {
       secret: secret ? '***configured***' : 'MISSING',
       secretLength: secret?.length || 0,
@@ -26,7 +25,6 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: any) {
-    // Debug logging
     console.log('JWT Payload validated:', {
       sub: payload.sub,
       email: payload.email,
@@ -37,7 +35,6 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       throw new UnauthorizedException('Invalid token payload');
     }
 
-    // This object becomes the request.user
     return {
       id: payload.sub,
       email: payload.email,

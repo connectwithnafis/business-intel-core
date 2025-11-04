@@ -1,13 +1,15 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Post, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth, ApiBody, ApiResponse } from '@nestjs/swagger';
+import { Body, Controller, Get, HttpCode, HttpStatus, Post, Delete, Param, UseGuards } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiBody, ApiResponse, ApiParam } from '@nestjs/swagger';
 import { RegisterDto } from '../dto/auth/register.dto';
 import { LoginDto } from '../dto/auth/login.dto';
-import { RefreshTokenDto } from '../dto/auth/refresh-token.dto'
+import { RefreshTokenDto } from '../dto/auth/refresh-token.dto';
 import { AuthService } from '../../application/auth/auth.service';
+import type { SessionMetadata } from '../../application/auth/auth.service';
 import { JwtAuthGuard } from '../../application/auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../../application/auth/guards/roles.guard'
+import { RolesGuard } from '../../application/auth/guards/roles.guard';
 import { CurrentUser } from '../../application/auth/decorators/current-user.decorator';
 import { Roles } from '../../application/auth/decorators/roles.decorator';
+import { RequestMetadata } from '../../application/auth/decorators/request-metadata.decorator';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -20,23 +22,11 @@ export class AuthController {
   @ApiResponse({
     status: 201,
     description: 'User successfully registered',
-    schema: {
-      example: {
-        user: {
-          id: 'uuid-here',
-          email: 'user@example.com',
-          role: 'user',
-          createdAt: '2025-11-03T00:00:00.000Z',
-          updatedAt: '2025-11-03T00:00:00.000Z',
-        },
-      },
-    },
   })
   @ApiResponse({ status: 400, description: 'Email already in use' })
   async register(@Body() dto: RegisterDto) {
     const user = await this.authService.register(dto);
-    // Do not return password hash or refresh token
-    const { passwordHash, refreshTokenHash, ...safe } = user as any;
+    const { passwordHash, ...safe } = user as any;
     return { user: safe };
   }
 
@@ -47,16 +37,13 @@ export class AuthController {
   @ApiResponse({
     status: 200,
     description: 'Login successful',
-    schema: {
-      example: {
-        access_token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
-        refresh_token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
-      },
-    },
   })
   @ApiResponse({ status: 401, description: 'Invalid credentials' })
-  async login(@Body() dto: LoginDto) {
-    return this.authService.login(dto);
+  async login(
+    @Body() dto: LoginDto,
+    @RequestMetadata() metadata: SessionMetadata,
+  ) {
+    return this.authService.login(dto, metadata);
   }
 
   @HttpCode(HttpStatus.OK)
@@ -66,25 +53,48 @@ export class AuthController {
   @ApiResponse({
     status: 200,
     description: 'Tokens refreshed successfully',
-    schema: {
-      example: {
-        access_token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
-        refresh_token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
-      },
-    },
   })
   @ApiResponse({ status: 403, description: 'Invalid refresh token' })
-  async refresh(@Body() dto: RefreshTokenDto) {
-    return this.authService.refreshTokens(dto.refreshToken);
+  async refresh(
+    @Body() dto: RefreshTokenDto,
+    @RequestMetadata() metadata: SessionMetadata,
+  ) {
+    return this.authService.refreshTokens(dto.refreshToken, metadata);
   }
 
   @UseGuards(JwtAuthGuard)
   @Post('logout')
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Logout and invalidate refresh token' })
+  @ApiOperation({ summary: 'Logout and invalidate all sessions' })
   @ApiResponse({ status: 200, description: 'Logged out successfully' })
   async logout(@CurrentUser() user: any) {
     return this.authService.logout(user.id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('sessions')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'List all active sessions for current user' })
+  @ApiResponse({
+    status: 200,
+    description: 'Sessions retrieved',
+  })
+  async listSessions(@CurrentUser() user: any) {
+    return this.authService.listSessions(user.id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete('sessions/:sessionId')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Revoke a specific session' })
+  @ApiParam({ name: 'sessionId', description: 'Session ID to revoke' })
+  @ApiResponse({ status: 200, description: 'Session revoked successfully' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Session not found or unauthorized' })
+  async revokeSession(
+    @CurrentUser() user: any,
+    @Param('sessionId') sessionId: string,
+  ) {
+    return this.authService.revokeSession(user.id, sessionId);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -94,13 +104,6 @@ export class AuthController {
   @ApiResponse({
     status: 200,
     description: 'User profile retrieved',
-    schema: {
-      example: {
-        id: 'uuid-here',
-        email: 'user@example.com',
-        role: 'user',
-      },
-    },
   })
   getProfile(@CurrentUser() user: any) {
     return user;

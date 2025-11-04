@@ -1,9 +1,10 @@
 import { IUserRepository } from 'src/domain/interfaces/repositories/user.repository.interface';
 import { User } from 'src/domain/entities/user';
 import { Repository } from 'typeorm';
-import { UserEntity } from '../../infrastructure/entities/user.entity';
-import { InjectRepository } from '@nestjs/typeorm';
+import { UserEntity } from '../entities/user.entity';
+import { Injectable } from '@nestjs/common';
 
+@Injectable()
 export class UserRepository implements IUserRepository {
   constructor(
     private readonly repo: Repository<UserEntity>
@@ -15,7 +16,7 @@ export class UserRepository implements IUserRepository {
       entity.email,
       entity.passwordHash,
       entity.role,
-      entity.refreshTokenHash ?? null,
+      entity.fullName ?? null,
       entity.createdAt,
       entity.updatedAt
     );
@@ -26,7 +27,7 @@ export class UserRepository implements IUserRepository {
     entity.email = user.email;
     entity.passwordHash = user.passwordHash;
     entity.role = user.role;
-    entity.refreshTokenHash = user.refreshTokenHash;
+    entity.fullName = user.fullName;
     return entity;
   }
 
@@ -46,7 +47,7 @@ export class UserRepository implements IUserRepository {
     return this.toDomain(saved);
   }
 
-  async updateRefreshToken(userId: string, refreshTokenHash: string | null): Promise<void> {
-    await this.repo.update(userId, { refreshTokenHash });
+  async update(userId: string, updates: Partial<User>): Promise<void> {
+    await this.repo.update(userId, updates as any);
   }
 }
