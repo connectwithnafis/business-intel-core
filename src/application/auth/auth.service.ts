@@ -60,47 +60,46 @@ export class AuthService {
 
   async refreshTokens(refreshToken: string) {
     try {
-      // Verify JWT signature and expiration
       const payload = this.jwtService.verify(refreshToken, {
         secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
       });
 
-      // Hash the token to compare with stored hash
-      const tokenHash = await argon2.hash(refreshToken);
-      
-      // Find the refresh token in database
-      const storedToken = await this.refreshTokenRepository.findByTokenHash(tokenHash);
-      
-      if (!storedToken) {
-        throw new ForbiddenException('Invalid refresh token');
-      }
+      const storedTokens = await this.refreshTokenRepository.findByUserId(payload.sub);
+      if (!storedTokens.length) throw new ForbiddenException('Invalid refresh token');
 
-      // Check if token is valid (not expired or revoked)
+      const matchedToken = await (async () => {
+        for (const token of storedTokens) {
+          if (await argon2.verify(token.tokenHash, refreshToken)) {
+            return token;
+          }
+        }
+        return null;
+      })();
+      if (!matchedToken) throw new ForbiddenException('Invalid refresh token');
+
+      // Validate expiry / revoked
       const tokenDomain = new RefreshToken(
-        storedToken.id,
-        storedToken.userId,
-        storedToken.tokenHash,
-        storedToken.expiresAt,
-        storedToken.createdAt,
-        storedToken.revokedAt,
+        matchedToken.id,
+        matchedToken.userId,
+        matchedToken.tokenHash,
+        matchedToken.expiresAt,
+        matchedToken.createdAt,
+        matchedToken.revokedAt,
       );
 
-      if (!tokenDomain.isValid()) {
-        throw new ForbiddenException('Refresh token expired or revoked');
-      }
+      if (!tokenDomain.isValid()) throw new ForbiddenException('Refresh token expired or revoked');
 
-      // Get user
-      const user = await this.userRepository.findById(payload.sub);
-      if (!user) {
-        throw new ForbiddenException('User not found');
-      }
-
-      // Revoke old refresh token
-      await this.refreshTokenRepository.revoke(storedToken.id!);
+      // Revoke old token
+      await this.refreshTokenRepository.revoke(matchedToken.id!);
 
       // Generate new tokens
+      const user = await this.userRepository.findById(payload.sub);
+      if (!user || !user.id) {
+        throw new ForbiddenException('User not found');
+      }
       const tokens = await this.generateTokens(user);
-      await this.storeRefreshToken((user as any).id, tokens.refreshToken);
+      await this.storeRefreshToken(user.id, tokens.refreshToken);
+
 
       return {
         access_token: tokens.accessToken,
@@ -110,6 +109,7 @@ export class AuthService {
       throw new ForbiddenException('Invalid refresh token');
     }
   }
+
 
   async logout(userId: string) {
     // Revoke all refresh tokens for this user
